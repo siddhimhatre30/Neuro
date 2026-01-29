@@ -1,4 +1,4 @@
-# NEURO 🤖
+# NEURO DESKTOP ASSISTANT🤖
 
 NEURO is an AI-powered desktop assistant built using Python that integrates face authentication, voice-based commands, and a web-based frontend interface. The project demonstrates the use of computer vision, automation, and modular software architecture.
 
