@@ -1,0 +1,6 @@
+/envNeuro
+/.env
+neuro.db
+/backend/__pycache__
+/backend/auth/samples
+/Contact.csv
