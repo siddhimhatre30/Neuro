@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from backend.command import (
-    ask_open_image,
     ask_open_pdf,
     handle_drive_choice,
     handle_confirmation,
@@ -31,12 +30,7 @@ def chatbot_response(user_text):
         handle_confirmation(query)
         return ""
 
-    if "open image" in query:
-        parts = query.replace("open image", "").split(" from ")
-        name = parts[0].strip()
-        location = parts[1].strip() if len(parts) > 1 else None
-        ask_open_image(name, location)
-        return ""
+
 
     if "open pdf" in query:
         parts = query.replace("open pdf", "").split(" from ")

@@ -6,19 +6,7 @@ from datetime import datetime
 import webbrowser
 import os
 import shutil
-
-
-# ================== SPEAK ==================
-def speak(text):
-    text = str(text)
-    engine = pyttsx3.init('sapi5')
-    voices = engine.getProperty('voices')
-    engine.setProperty('voice', voices[1].id)
-    engine.setProperty('rate', 174)
-    eel.DisplayMessage(text)
-    eel.receiverText(text)
-    engine.say(text)
-    engine.runAndWait()
+from backend.voices import speak
 
 
 # ================== TAKE COMMAND ==================
@@ -140,68 +128,76 @@ def handle_intent(query):
                     exit()
                 return True
     return False
-def ask_open_image(image_name, location=None):
-    search_paths = [
-        os.path.join(os.path.expanduser("~"), "Desktop"),
-        os.path.join(os.path.expanduser("~"), "Downloads"),
-        "C:\\",
-        "D:\\"
-    ]
-
-    for base in search_paths:
-        for root, dirs, files in os.walk(base):
-            for file in files:
-                name, ext = os.path.splitext(file)
-                if name.lower() == image_name.lower() and ext.lower() in [".jpg", ".png", ".jpeg"]:
-                    os.startfile(os.path.join(root, file))
-                    speak(f"Opening image {image_name}")
-                    return
-
-    speak("Image not found")
-
 
 # ================== MAIN ==================
 @eel.expose
 def allCommands(message=1):
 
     query = takecommand() if message == 1 else message
+    query = query.lower().strip()
     eel.senderText(query)
 
     try:
+        # ---------------- SEARCH ----------------
         if query.startswith("search"):
             search_google(query)
 
+        # ---------------- CREATE FOLDER ----------------
         elif "create folder" in query or "make folder" in query:
             createFolderCommand(query)
 
+        # ---------------- DELETE FOLDER ----------------
         elif "delete folder" in query or "remove folder" in query:
             deleteFolderCommand(query)
 
-        elif "open" in query:
+        # ---------------- OPEN APPS / FILES ----------------
+        elif query.startswith("open"):
             from backend.features import openCommand
             openCommand(query)
-        elif "send message" in query or "phone call" in query or "video call" in query: 
-            from backend.features import findContact, whatsApp 
+        # ▶ PLAY SONG ON YOUTUBE
+        elif "play" in query and "youtube" in query:
+            from backend.features import playYouTube
+            playYouTube(query)
 
-            contact_no, name = findContact(query)
+        # ---------------- SEND WHATSAPP MESSAGE ----------------
+        elif "send message" in query:
+            from backend import features
 
+            contact_no, name = features.findContact(query)
             if contact_no == 0:
-                return   # 🚑 STOP if contact not found
+                return
 
-            if "send message" in query:
-                speak("What message should I send?")
-                msg = takecommand()
-                whatsApp(contact_no, msg, "message", name)
+            speak("What message should I send?")
+            msg = takecommand()
+            features.whatsApp(contact_no, msg, "message", name)
 
-            elif "phone call" in query:
-                whatsApp(contact_no, "", "call", name)
+        elif "whatsapp call" in query or "call on whatsapp" in query:
+            from backend import features
+            contact_no, name = features.findContact(query)
+            if contact_no == 0:
+                return
+            features.whatsApp(contact_no, "", "call", name)
+        elif "video call" in query or "whatsapp video" in query:
+            from backend import features
+            contact_no, name = features.findContact(query)
+            if contact_no == 0:
+                return
+            features.whatsApp(contact_no, "", "video", name)
+        elif "call" in query:
+            from backend import features
+            contact_no, name = features.findContact(query)
+            if contact_no == 0:
+                return
+            features.normalPhoneCall(contact_no, name)
 
-            elif "video call" in query:
-                whatsApp(contact_no, "", "video", name)
 
+
+
+        # ---------------- INTENTS (TIME, DATE, EXIT) ----------------
         elif handle_intent(query):
             return
 
+        # ---------------- CHATBOT FALLBACK ----------------
         else:
             from backend.chatbot import chatbot_response
             reply = chatbot_response(query)
@@ -209,6 +205,6 @@ def allCommands(message=1):
                 speak(reply)
 
     except Exception as e:
-        print("Error:", e)
+        print("Command Error:", e)
 
     eel.ShowHood()

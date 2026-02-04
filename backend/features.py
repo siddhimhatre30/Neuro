@@ -12,12 +12,11 @@ import eel
 import pvporcupine
 import pyaudio
 import pyautogui
-from backend.command import speak
+from backend.voices import speak
 from backend.config import ASSISTANT_NAME
 import pywhatkit as kit
-
 from backend.helper import extract_yt_term, remove_words
-
+import pygetwindow as gw
 conn = sqlite3.connect('neuro.db')
 cursor = conn.cursor()
 
@@ -126,53 +125,122 @@ def hotword():
         if paud is not None:
             paud.terminate()
 # find contacts
+def playYouTube(query):
+    song = query.replace("play", "").replace("on youtube", "").replace("youtube", "").strip()
+    speak(f"Playing {song} on YouTube")
+    kit.playonyt(song)
+
 def findContact(query):
-    
-    words_to_remove = [ASSISTANT_NAME, 'make', 'a', 'to', 'phone', 'call', 'send', 'message', 'wahtsapp', 'video']
+    words_to_remove = [
+        ASSISTANT_NAME, 'make', 'a', 'to', 'phone', 'call',
+        'send', 'message', 'whatsapp', 'video'
+    ]
+
     query = remove_words(query, words_to_remove)
+    query = query.strip().lower()
 
     try:
-        query = query.strip().lower()
-        cursor.execute("SELECT mobile_no FROM contacts WHERE LOWER(name) LIKE ? OR LOWER(name) LIKE ?", ('%' + query + '%', query + '%'))
-        results = cursor.fetchall()
-        print(results[0][0])
-        mobile_number_str = str(results[0][0])
+        cursor.execute(
+            "SELECT name, mobile_no FROM contacts WHERE LOWER(name) LIKE ?",
+            ('%' + query + '%',)
+        )
+        result = cursor.fetchone()
 
-        if not mobile_number_str.startswith('+91'):
-            mobile_number_str = '+91' + mobile_number_str
+        if not result:
+            speak('Contact not found')
+            return 0, 0
 
-        return mobile_number_str, query
-    except:
-        speak('not exist in contacts')
+        name = result[0]
+        mobile_no = str(result[1])
+
+        # 🔥 CLEAN MOBILE NUMBER
+        mobile_no = re.sub(r'\D', '', mobile_no)  # remove space, +, -
+
+        if len(mobile_no) == 10:
+            mobile_no = '91' + mobile_no
+
+        mobile_no = '+' + mobile_no
+
+        print("Calling number:", mobile_no)
+
+        return mobile_no, name
+
+    except Exception as e:
+        print("findContact error:", e)
+        speak('Contact not exist')
         return 0, 0
-    
+def open_whatsapp_desktop():
+    try:
+        subprocess.Popen("start whatsapp:", shell=True)
+        time.sleep(8)  # give time to load
+    except Exception as e:
+        print("WhatsApp open error:", e)
+        speak("WhatsApp desktop not found")
+def wait_for_whatsapp():
+    for _ in range(20):
+        windows = gw.getWindowsWithTitle("WhatsApp")
+        if windows:
+            windows[0].activate()
+            return True
+        time.sleep(0.5)
+    return False
+
+
 def whatsApp(mobile_no, message, flag, name):
-    if flag == 'message':
-        neuro_message = "Message sent successfully to " + name
-    elif flag == 'call':
-        neuro_message = "Calling " + name
-        message = ""
-    else:
-        neuro_message = "Starting video call with " + name
-        message = ""
 
-    encoded_message = quote(message)
-    whatsapp_url = f"whatsapp://send?phone={mobile_no}&text={encoded_message}"
+    if flag == "message":
+        speak(f"Sending message to {name}")
 
-    # open whatsapp chat
-    subprocess.run(f'start "" "{whatsapp_url}"', shell=True)
-    time.sleep(8)  # ⏳ WAIT for WhatsApp to load fully
+        # open WhatsApp chat
+        url = f"whatsapp://send?phone={mobile_no}&text={quote(message)}"
+        subprocess.Popen(f'start "" "{url}"', shell=True)
 
-    if flag == 'message':
-        pyautogui.press('enter')  # ✅ SEND MESSAGE
+        time.sleep(10)  # WhatsApp Desktop load time
 
-    elif flag == 'call':
-        pyautogui.hotkey('ctrl', 'alt', 'shift', 'c')
+        # 🔥 CLICK MESSAGE INPUT BOX (VERY IMPORTANT)
+        pyautogui.click(1872,980)   # 👈 CHANGE THIS FOR YOUR SCREEN
+        time.sleep(0.3)
 
-    elif flag == 'video':
-        pyautogui.hotkey('ctrl', 'alt', 'shift', 'v')
+        pyautogui.press("enter")
+        speak("Message sent successfully")
 
-    speak(neuro_message)
+
+    elif flag == "call":
+        whatsapp_call_pyautogui(name, "voice")
+
+    elif flag == "video":
+        whatsapp_call_pyautogui(name, "video")
+def whatsapp_call_pyautogui(name, call_type="voice"):
+    open_whatsapp_desktop()
+
+    # 1️⃣ Click search bar
+    pyautogui.click(210,154)  # 🔴 CHANGE
+    time.sleep(0.5)
+
+    # 2️⃣ Type contact name
+    pyautogui.write(name, interval=0.1)
+    time.sleep(1)
+
+    # 3️⃣ Open chat
+    pyautogui.press("enter")
+    time.sleep(2)
+    # 1️⃣ Click call dropdown
+    pyautogui.click(1694,87)
+    time.sleep(0.8)
+    # 4️⃣ Click call button
+    if call_type == "voice":
+        pyautogui.click(1453,240)  # 🔴 VOICE ICON
+        speak(f"Calling {name}")
+
+    elif call_type == "video":
+        pyautogui.click(1662,243)  # 🔴 VIDEO ICON
+        speak(f"Starting video call with {name}")
+
+
+def normalPhoneCall(mobile_no, name):
+    speak(f"Calling {name}. Please confirm the call on your phone or dialer.")
+    subprocess.run(f'start tel:{mobile_no}', shell=True)
+
 
 
 # Assistant name
