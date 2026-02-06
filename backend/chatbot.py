@@ -1,56 +1,59 @@
+# ================= IMPORTS =================
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from backend.command import (
-    ask_open_pdf,
-    handle_drive_choice,
-    handle_confirmation,
-)
-from backend.session import check_timeout
+# Optional session timeout (safe import)
+try:
+    from backend.session import check_timeout
+except:
+    def check_timeout():
+        pass
 
+
+# ================= LOAD ENV =================
 load_dotenv()
 
-if not os.getenv("OPENAI_API_KEY"):
+API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not API_KEY:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-def chatbot_response(user_text):
-    query = user_text.lower().strip()
-    query = query.replace("a i", "ai")
-
-    check_timeout()
-
-    if any(d in query for d in ["c drive", "d drive", "e drive"]):
-        handle_drive_choice(query)
-        return ""
-
-    if "yes" in query or "no" in query:
-        handle_confirmation(query)
-        return ""
+client = OpenAI(api_key=API_KEY)
 
 
+# ================= CHATBOT FUNCTION =================
+def chatbot_response(user_text: str) -> str:
+    """
+    Handles online chatbot response using OpenAI
+    """
 
-    if "open pdf" in query:
-        parts = query.replace("open pdf", "").split(" from ")
-        name = parts[0].strip()
-        location = parts[1].strip() if len(parts) > 1 else None
-        ask_open_pdf(name, location)
-        return ""
+    if not user_text:
+        return "Please say something."
 
     try:
+        # Optional session timeout check
+        check_timeout()
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful AI assistant named Neuro."},
-                {"role": "user", "content": user_text}
+                {
+                    "role": "system",
+                    "content": "You are Neuro, a friendly and helpful AI assistant."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
             ],
-            max_tokens=200
+            max_tokens=200,
+            temperature=0.7
         )
-        return response.choices[0].message.content
+
+        reply = response.choices[0].message.content.strip()
+        return reply
 
     except Exception as e:
         print("OpenAI Error:", e)
-        return "Sorry, I am having trouble connecting to my brain."
-print("API KEY LOADED:", bool(os.getenv("OPENAI_API_KEY")))
+        return "Sorry, I am having trouble connecting to the internet."

@@ -2,5 +2,9 @@
 /.env
 neuro.db
 /backend/__pycache__
-/backend/auth/samples
+/backend/auth/dataset
 /Contact.csv
+__pycache__/
+__pycache__/
+/backend/auth/trainer
+/backend/auth/_pycache__

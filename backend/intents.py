@@ -1,13 +1,5 @@
 from datetime import datetime
-import pyttsx3
-
-# text-to-speech (since you already use pyttsx3)
-engine = pyttsx3.init()
-
-def speak(text):
-    engine.say(text)
-    engine.runAndWait()
-
+from backend.voices import speak
 
 INTENTS = {
     "greeting": {
@@ -16,7 +8,7 @@ INTENTS = {
     },
 
     "identity": {
-        "keywords": ["your name", "who are you","tell me about yourself"],
+        "keywords": ["your name", "who are you", "about yourself"],
         "response": "I am Neuro, your AI assistant."
     },
 
@@ -45,20 +37,19 @@ def handle_intent(query):
             if keyword in query:
 
                 if data["response"] == "TIME":
-                    now = datetime.now().strftime("%I:%M %p")
-                    speak(f"The time is {now}")
-                    return True
+                    reply = datetime.now().strftime("%I:%M %p")
 
-                if data["response"] == "DATE":
-                    today = datetime.now().strftime("%A, %d %B %Y")
-                    speak(f"Today is {today}")
-                    return True
+                elif data["response"] == "DATE":
+                    reply = datetime.now().strftime("%A, %d %B %Y")
 
-                speak(data["response"])
+                else:
+                    reply = data["response"]
+
+                speak(reply)
 
                 if intent == "exit":
                     exit()
 
-                return True
+                return reply   # 🔥 IMPORTANT
 
-    return False
+    return None

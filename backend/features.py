@@ -17,8 +17,13 @@ from backend.config import ASSISTANT_NAME
 import pywhatkit as kit
 from backend.helper import extract_yt_term, remove_words
 import pygetwindow as gw
-conn = sqlite3.connect('neuro.db')
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "neuro.db")
+
+conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
+
 
 @eel.expose
 def playAssistantSound():

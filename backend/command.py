@@ -7,6 +7,7 @@ import webbrowser
 import os
 import shutil
 from backend.voices import speak
+from backend.intents import handle_intent
 
 
 # ================== TAKE COMMAND ==================
@@ -105,29 +106,6 @@ def search_google(query):
     webbrowser.open(url)
 
 
-# ================== INTENTS ==================
-INTENTS = {
-    "greeting": {"keywords": ["hi", "hello"], "response": "Hello"},
-    "time": {"keywords": ["time"], "response": "TIME"},
-    "date": {"keywords": ["date"], "response": "DATE"},
-    "exit": {"keywords": ["exit", "bye"], "response": "Goodbye"}
-}
-
-
-def handle_intent(query):
-    for intent, data in INTENTS.items():
-        for k in data["keywords"]:
-            if k in query:
-                if data["response"] == "TIME":
-                    speak(datetime.now().strftime("%I:%M %p"))
-                elif data["response"] == "DATE":
-                    speak(datetime.now().strftime("%A, %d %B %Y"))
-                else:
-                    speak(data["response"])
-                if intent == "exit":
-                    exit()
-                return True
-    return False
 
 # ================== MAIN ==================
 @eel.expose
@@ -138,6 +116,10 @@ def allCommands(message=1):
     eel.senderText(query)
 
     try:
+        intent_reply = handle_intent(query)
+        if intent_reply:
+            eel.ShowHood()
+            return
         # ---------------- SEARCH ----------------
         if query.startswith("search"):
             search_google(query)
@@ -190,12 +172,6 @@ def allCommands(message=1):
                 return
             features.normalPhoneCall(contact_no, name)
 
-
-
-
-        # ---------------- INTENTS (TIME, DATE, EXIT) ----------------
-        elif handle_intent(query):
-            return
 
         # ---------------- CHATBOT FALLBACK ----------------
         else:
