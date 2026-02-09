@@ -1,64 +1,66 @@
 import cv2
 import os
 
-# ================== CONFIG ==================
+# ================= CONFIG =================
 CASCADE_PATH = "backend/auth/haarcascade_frontalface_default.xml"
 DATASET_PATH = "backend/auth/dataset"
-IMAGE_COUNT = 30
-MIN_FACE_SIZE = 100
-# ============================================
+TOTAL_SAMPLES = 40          # number of images to capture
+MIN_FACE_SIZE = 120         # ignore very small faces
+# =========================================
 
-# Load face detector
+# Load Haar cascade
 face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
-# Ask user name
-name = input("Enter person name: ").strip()
+# Ask for person name
+person_name = input("Enter person name: ").strip()
 
-if not name:
+if person_name == "":
     print("❌ Name cannot be empty")
     exit()
 
-# Create user folder
-user_path = os.path.join(DATASET_PATH, name)
-os.makedirs(user_path, exist_ok=True)
+# Create dataset folder for person
+person_path = os.path.join(DATASET_PATH, person_name)
+os.makedirs(person_path, exist_ok=True)
 
-# Start camera
+# Open camera
 cam = cv2.VideoCapture(0)
 if not cam.isOpened():
     print("❌ Camera not accessible")
     exit()
 
-print("\n📸 Look at the camera. Capturing faces...")
+print("\n📸 Collecting face samples...")
+print("➡️ Look straight, left, right, smile slightly")
+print("➡️ Press ESC to stop early\n")
 
 count = 0
 
 while True:
     ret, frame = cam.read()
     if not ret:
-        print("❌ Failed to grab frame")
+        print("❌ Failed to read frame")
         break
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
     faces = face_cascade.detectMultiScale(
         gray,
-        scaleFactor=1.3,
-        minNeighbors=5
+        scaleFactor=1.2,
+        minNeighbors=6,
+        minSize=(MIN_FACE_SIZE, MIN_FACE_SIZE)
     )
 
     for (x, y, w, h) in faces:
-        if w < MIN_FACE_SIZE or h < MIN_FACE_SIZE:
-            continue
+        face_img = gray[y:y+h, x:x+w]
 
         count += 1
-        face_img = gray[y:y+h, x:x+w]
-        img_path = os.path.join(user_path, f"{count}.jpg")
+        img_path = os.path.join(person_path, f"{count}.jpg")
         cv2.imwrite(img_path, face_img)
 
-        # Draw rectangle
+        # Draw rectangle and counter
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
         cv2.putText(
             frame,
-            f"{count}/{IMAGE_COUNT}",
+            f"{count}/{TOTAL_SAMPLES}",
             (x, y - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
@@ -66,15 +68,18 @@ while True:
             2
         )
 
-    cv2.imshow("Face Samples", frame)
+    cv2.imshow("Face Sample Collection", frame)
 
-    if cv2.waitKey(1) & 0xFF == 27:  # ESC key
+    if cv2.waitKey(1) & 0xFF == 27:   # ESC key
+        print("⏹ Sample collection stopped by user")
         break
-    if count >= IMAGE_COUNT:
+
+    if count >= TOTAL_SAMPLES:
         break
 
 # Cleanup
 cam.release()
 cv2.destroyAllWindows()
 
-print(f"\n✅ {count} face samples saved for '{name}'")
+print(f"\n✅ {count} samples saved for '{person_name}'")
+print(f"📂 Location: {person_path}")

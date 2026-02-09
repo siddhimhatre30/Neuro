@@ -1,66 +1,62 @@
 import cv2
+import os
+import json
 import numpy as np
 from PIL import Image
-import os
 
-# ================== PATHS ==================
-SAMPLES_PATH = "backend/auth/samples"
-TRAINER_PATH = "backend/auth/trainer"
+# ================= CONFIG =================
+DATASET_PATH = "backend/auth/dataset"
+TRAINER_DIR = "backend/auth/trainer"
+TRAINER_PATH = os.path.join(TRAINER_DIR, "trainer.yml")
+LABELS_PATH = os.path.join(TRAINER_DIR, "labels.json")
+# =========================================
 
-# Create trainer directory if it doesn't exist
-if not os.path.exists(TRAINER_PATH):
-    os.makedirs(TRAINER_PATH)
+os.makedirs(TRAINER_DIR, exist_ok=True)
 
-# ================== FACE RECOGNIZER ==================
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 
-# Use OpenCV built-in haarcascade path (SAFE)
-detector = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
+faces = []
+labels = []
+label_map = {}
 
+current_id = 1
 
-# ================== FUNCTION TO GET IMAGES & LABELS ==================
-def getImagesAndLabels(path):
-    imagePaths = [os.path.join(path, f) for f in os.listdir(path)]
-    faceSamples = []
-    ids = []
+print("\n📂 Loading dataset...")
 
-    for imagePath in imagePaths:
+for person_name in sorted(os.listdir(DATASET_PATH)):
+    person_path = os.path.join(DATASET_PATH, person_name)
 
-        # Convert image to grayscale
-        gray_img = Image.open(imagePath).convert('L')
-        img_arr = np.array(gray_img, 'uint8')
+    if not os.path.isdir(person_path):
+        continue
 
-        # Get ID from image filename: face.id.count.jpg
-        try:
-            id = int(os.path.split(imagePath)[-1].split(".")[1])
-        except:
+    print(f"➡️ {person_name} → ID {current_id}")
+    label_map[current_id] = person_name
+
+    for img_name in os.listdir(person_path):
+        if not img_name.lower().endswith((".jpg", ".png", ".jpeg")):
             continue
 
-        faces = detector.detectMultiScale(img_arr)
+        img_path = os.path.join(person_path, img_name)
+        img = Image.open(img_path).convert("L")
+        img_np = np.array(img, "uint8")
 
-        for (x, y, w, h) in faces:
-            faceSamples.append(img_arr[y:y + h, x:x + w])
-            ids.append(id)
+        faces.append(img_np)
+        labels.append(current_id)
 
-    return faceSamples, ids
-
-
-# ================== TRAINING ==================
-print("Training faces. This may take a few seconds...")
-
-faces, ids = getImagesAndLabels(SAMPLES_PATH)
+    current_id += 1
 
 if len(faces) == 0:
-    print("No faces found! Please collect face samples first.")
+    print("❌ No training images found")
     exit()
 
-recognizer.train(faces, np.array(ids))
+print("\n🧠 Training face recognizer...")
+recognizer.train(faces, np.array(labels))
 
-# Save trained model
-recognizer.write(os.path.join(TRAINER_PATH, "trainer.yml"))
+recognizer.save(TRAINER_PATH)
 
-print("Model trained successfully!")
-print("Saved as backend/auth/trainer/trainer.yml")
-print("Now you can recognize faces")
+with open(LABELS_PATH, "w") as f:
+    json.dump(label_map, f, indent=4)
+
+print("\n✅ Training complete")
+print(f"📁 trainer.yml saved at: {TRAINER_PATH}")
+print(f"🗂 labels.json saved at: {LABELS_PATH}")

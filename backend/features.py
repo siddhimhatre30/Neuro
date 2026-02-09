@@ -331,6 +331,27 @@ def deleteWebCommand(id):
     cursor.execute("DELETE FROM web_command WHERE Id = ?", (id,))
     conn.commit()
 
+@eel.expose
+def displayFileCommand():
+    cursor.execute("SELECT * FROM file_command")
+    results = cursor.fetchall()
+    jsonArr = json.dumps(results)
+    eel.displayFileCommand(jsonArr)
+    return 1
+
+
+@eel.expose
+def addFileCommand(key, value):
+    cursor.execute(
+        '''INSERT INTO file_command VALUES (?, ?, ?)''', (None, key, value))
+    conn.commit()
+
+
+@eel.expose
+def deleteFileCommand(id):
+    cursor.execute("DELETE FROM file_command WHERE Id = ?", (id,))
+    conn.commit()
+
 
 @eel.expose
 def displayPhoneBookCommand():
