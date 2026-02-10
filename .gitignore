@@ -6,4 +6,6 @@ neuro.db
 /Contact.csv
 __pycache__/
 __pycache__/
-
+__pycache__/
+*.pyc
+backend/auth/trainer/
